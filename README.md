@@ -6,7 +6,7 @@
 
 GinRateLimit is a rate limiter for the <a href="https://github.com/gin-gonic/gin">gin framework</a>. By default, it can
 only store rate limit info in memory. If you want to store it somewhere else like redis you can make your own store or
-use third party stores. The library is new so there are no third party stores yet. So I would appreciate if someone
+use third party stores, similar to how <a href="https://github.com/nfriedly/express-rate-limit">express-rate-limit</a> does it. The library is new so there are no third party stores yet. So I would appreciate if someone
 could make one.
 
 Install
