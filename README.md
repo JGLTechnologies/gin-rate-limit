@@ -9,7 +9,7 @@ only store rate limit info in memory. If you want to store it somewhere else lik
 use third party stores. The library is new so there are no third party stores yet. So I would appreciate if someone
 could make one.
 
-Install from git
+Install
 
  ```shell
  go get github.com/Nebulizer1213/GinRateLimit
