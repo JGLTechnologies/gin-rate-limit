@@ -59,30 +59,30 @@ func (e *expiringDict) clearInBackground() {
 	}
 }
 
-type inMemoryStore struct {
+type InMemoryStoreType struct {
 	rate  int
 	limit int
 	data  expiringDict
 }
 
-type store interface {
-	Limit(key string) bool
-}
-
-func InMemoryStore(rate int, limit int) inMemoryStore {
-	data := expiringDict{&sync.Mutex{}, map[string]int{}, map[string]int{}}
-	store := inMemoryStore{rate, limit, data}
-	go data.clearInBackground()
-	return store
-}
-
-func (s *inMemoryStore) Limit(key string) bool {
+func (s *InMemoryStoreType) Limit(key string) bool {
 	s.data.incr(key)
 	s.data.expire(key, s.rate)
 	if s.data.get(key) > s.limit {
 		return true
 	}
 	return false
+}
+
+type store interface {
+	Limit(key string) bool
+}
+
+func InMemoryStore(rate int, limit int) InMemoryStoreType {
+	data := expiringDict{&sync.Mutex{}, map[string]int{}, map[string]int{}}
+	store := InMemoryStoreType{rate, limit, data}
+	go data.clearInBackground()
+	return store
 }
 
 func RateLimiter(keyFunc func(c *gin.Context) string, errorHandler func(c *gin.Context), s store) func(ctx *gin.Context) {
