@@ -39,7 +39,7 @@ func main() {
 	server := gin.Default()
 	// This makes it so each ip can only make 5 requests per second
 	store := GinRateLimit.InMemoryStore(1, 5)
-	mw := GinRateLimit.RateLimiter(keyFunc, errorHandler, &store)
+	mw := GinRateLimit.RateLimiter(keyFunc, errorHandler, store)
 	server.GET("/", mw, func(c *gin.Context) {
 		c.String(200, "Hello World")
 	})

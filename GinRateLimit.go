@@ -78,11 +78,11 @@ type store interface {
 	Limit(key string) bool
 }
 
-func InMemoryStore(rate int, limit int) InMemoryStoreType {
+func InMemoryStore(rate int, limit int) *InMemoryStoreType {
 	data := expiringDict{&sync.Mutex{}, map[string]int{}, map[string]int{}}
 	store := InMemoryStoreType{rate, limit, data}
 	go data.clearInBackground()
-	return store
+	return &store
 }
 
 func RateLimiter(keyFunc func(c *gin.Context) string, errorHandler func(c *gin.Context), s store) func(ctx *gin.Context) {
