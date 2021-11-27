@@ -6,55 +6,20 @@ import (
 	"time"
 )
 
-type expiringDict struct {
-	mutex      *sync.Mutex
-	data       map[string]int
-	expiryData map[string]int
+type user struct {
+	time     int
+	requests int
 }
 
-func (e *expiringDict) incr(key string) {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
-	v, _ := e.expiryData[key]
-	if v <= int(time.Now().Unix()) {
-		delete(e.data, key)
-		delete(e.expiryData, key)
-	}
-	e.data[key]++
-}
-
-func (e *expiringDict) get(key string) int {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
-	v, _ := e.expiryData[key]
-	if v <= int(time.Now().Unix()) {
-		delete(e.data, key)
-		delete(e.expiryData, key)
-	}
-	return e.data[key]
-}
-
-func (e *expiringDict) expire(key string, seconds int) {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
-	_, ok := e.expiryData[key]
-	if ok {
-		return
-	} else {
-		e.expiryData[key] = int(time.Now().Unix()) + seconds
-	}
-}
-
-func (e *expiringDict) clearInBackground() {
+func clearInBackground(data map[string]user, rate int, mutex *sync.Mutex) {
 	for {
-		e.mutex.Lock()
-		for k, v := range e.expiryData {
-			if v <= int(time.Now().Unix()) {
-				delete(e.data, k)
-				delete(e.expiryData, k)
+		mutex.Lock()
+		for k, v := range data {
+			if v.time+rate <= int(time.Now().Unix()) {
+				delete(data, k)
 			}
 		}
-		e.mutex.Unlock()
+		mutex.Unlock()
 		time.Sleep(time.Minute)
 	}
 }
@@ -62,16 +27,29 @@ func (e *expiringDict) clearInBackground() {
 type InMemoryStoreType struct {
 	rate  int
 	limit int
-	data  expiringDict
+	data  map[string]user
+	mutex *sync.Mutex
 }
 
 func (s *InMemoryStoreType) Limit(key string) bool {
-	s.data.incr(key)
-	s.data.expire(key, s.rate)
-	if s.data.get(key) > s.limit {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	_, ok := s.data[key]
+	if !ok {
+		s.data[key] = user{int(time.Now().Unix()), s.limit}
+	}
+	u := s.data[key]
+	if u.time+s.rate <= int(time.Now().Unix()) {
+		u.requests = s.limit
+	}
+	if u.requests <= 0 {
 		return true
 	}
+	u.requests--
+	u.time = int(time.Now().Unix())
+	s.data[key] = u
 	return false
+
 }
 
 type store interface {
@@ -79,9 +57,10 @@ type store interface {
 }
 
 func InMemoryStore(rate int, limit int) *InMemoryStoreType {
-	data := expiringDict{&sync.Mutex{}, map[string]int{}, map[string]int{}}
-	store := InMemoryStoreType{rate, limit, data}
-	go data.clearInBackground()
+	mutex := &sync.Mutex{}
+	data := map[string]user{}
+	store := InMemoryStoreType{rate, limit, data, mutex}
+	go clearInBackground(data, rate, mutex)
 	return &store
 }
 
