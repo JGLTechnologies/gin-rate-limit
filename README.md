@@ -43,6 +43,7 @@ func main() {
 	server.GET("/", mw, func(c *gin.Context) {
 		c.String(200, "Hello World")
 	})
+	server.Run(":8080")
 }
 ```
 
