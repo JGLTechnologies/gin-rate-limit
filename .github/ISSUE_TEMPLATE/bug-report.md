@@ -3,7 +3,7 @@ name: Bug Report
 about: Bug report template
 title: ''
 labels: bug
-assignees: ''
+assignees: Nebulizer1213
 
 ---
 
