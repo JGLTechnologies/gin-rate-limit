@@ -7,15 +7,15 @@ import (
 )
 
 type user struct {
-	time     int
-	requests int
+	ts     int
+	tokens int
 }
 
 func clearInBackground(data map[string]user, rate int, mutex *sync.Mutex) {
 	for {
 		mutex.Lock()
 		for k, v := range data {
-			if v.time+rate <= int(time.Now().Unix()) {
+			if v.ts+rate <= int(time.Now().Unix()) {
 				delete(data, k)
 			}
 		}
@@ -39,14 +39,14 @@ func (s *InMemoryStoreType) Limit(key string) bool {
 		s.data[key] = user{int(time.Now().Unix()), s.limit}
 	}
 	u := s.data[key]
-	if u.time+s.rate <= int(time.Now().Unix()) {
-		u.requests = s.limit
+	if u.ts+s.rate <= int(time.Now().Unix()) {
+		u.tokens = s.limit
 	}
-	if u.requests <= 0 {
+	if u.tokens <= 0 {
 		return true
 	}
-	u.requests--
-	u.time = int(time.Now().Unix())
+	u.tokens--
+	u.ts = int(time.Now().Unix())
 	s.data[key] = u
 	return false
 
