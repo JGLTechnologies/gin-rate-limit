@@ -1,4 +1,4 @@
-module github.com/Nebulizer1213/GinRateLimit
+module github.com/JGLTechnologies/GinRateLimit
 
 go 1.17
 
