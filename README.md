@@ -12,7 +12,7 @@ could make one.
 Install
 
  ```shell
- go get github.com/Nebulizer1213/GinRateLimit
+ go get github.com/JGLTechnologies/GinRateLimit
 ```
 
 <br>
@@ -24,7 +24,7 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/Nebulizer1213/GinRateLimit"
+	"github.com/JGLTechnologies/GinRateLimit"
 )
 
 func keyFunc(c *gin.Context) string {
