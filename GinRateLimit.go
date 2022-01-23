@@ -7,15 +7,15 @@ import (
 )
 
 type user struct {
-	ts     int
+	ts     int64
 	tokens int
 }
 
-func clearInBackground(data map[string]*user, rate int, mutex *sync.Mutex) {
+func clearInBackground(data map[string]*user, rate int64, mutex *sync.Mutex) {
 	for {
 		mutex.Lock()
 		for k, v := range data {
-			if v.ts+rate <= int(time.Now().Unix()) {
+			if v.ts+rate <= time.Now().Unix() {
 				delete(data, k)
 			}
 		}
@@ -25,7 +25,7 @@ func clearInBackground(data map[string]*user, rate int, mutex *sync.Mutex) {
 }
 
 type InMemoryStoreType struct {
-	rate  int
+	rate  int64
 	limit int
 	data  map[string]*user
 	mutex *sync.Mutex
@@ -36,17 +36,17 @@ func (s *InMemoryStoreType) Limit(key string) bool {
 	defer s.mutex.Unlock()
 	_, ok := s.data[key]
 	if !ok {
-		s.data[key] = &user{int(time.Now().Unix()), s.limit}
+		s.data[key] = &user{time.Now().Unix(), s.limit}
 	}
 	u := s.data[key]
-	if u.ts+s.rate <= int(time.Now().Unix()) {
+	if u.ts+s.rate <= time.Now().Unix() {
 		u.tokens = s.limit
 	}
 	if u.tokens <= 0 {
 		return true
 	}
 	u.tokens--
-	u.ts = int(time.Now().Unix())
+	u.ts = time.Now().Unix()
 	s.data[key] = u
 	return false
 }
@@ -55,11 +55,11 @@ type store interface {
 	Limit(key string) bool
 }
 
-func InMemoryStore(rate int, limit int) *InMemoryStoreType {
+func InMemoryStore(rate time.Duration, limit int) *InMemoryStoreType {
 	mutex := &sync.Mutex{}
 	data := map[string]*user{}
-	store := InMemoryStoreType{rate, limit, data, mutex}
-	go clearInBackground(data, rate, mutex)
+	store := InMemoryStoreType{int64(rate.Seconds()), limit, data, mutex}
+	go clearInBackground(data, store.rate, mutex)
 	return &store
 }
 

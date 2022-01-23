@@ -5,8 +5,8 @@
 # GinRateLimit
 
 GinRateLimit is a rate limiter for the <a href="https://github.com/gin-gonic/gin">gin framework</a>. By default, it can
-only store rate limit info in memory. If you want to store it somewhere else like redis you can make your own store or
-use third party stores, similar to how <a href="https://github.com/nfriedly/express-rate-limit">express-rate-limit</a> does it. The library is new so there are no third party stores yet, so I would appreciate if someone
+only store rate limit info in memory and with redis. If you want to store it somewhere else you can make your own store
+or use third party stores. The library is new so there are no third party stores yet, so I would appreciate if someone
 could make one.
 
 Install
@@ -17,14 +17,16 @@ Install
 
 <br>
 
-Basic Setup
+Redis Example
 
 ```go
 package main
 
 import (
-	"github.com/gin-gonic/gin"
 	"github.com/JGLTechnologies/GinRateLimit"
+	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
+	"time"
 )
 
 func keyFunc(c *gin.Context) string {
@@ -38,7 +40,45 @@ func errorHandler(c *gin.Context) {
 func main() {
 	server := gin.Default()
 	// This makes it so each ip can only make 5 requests per second
-	store := GinRateLimit.InMemoryStore(1, 5)
+	// The redis store is still being tested. If you experience any bugs, report it on our GitHub or make a pull request to fix it.
+	store := GinRateLimit.RedisStore(time.Second, 5, redis.NewClient(&redis.Options{
+		ReadTimeout:  time.Second,
+		WriteTimeout: time.Second,
+		IdleTimeout:  time.Second * 5,
+	}))
+	mw := GinRateLimit.RateLimiter(keyFunc, errorHandler, store)
+	server.GET("/", mw, func(c *gin.Context) {
+		c.String(200, "Hello World")
+	})
+	server.Run(":8080")
+}
+```
+
+<br>
+
+Basic Setup
+
+```go
+package main
+
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/JGLTechnologies/GinRateLimit"
+	"time"
+)
+
+func keyFunc(c *gin.Context) string {
+	return c.ClientIP()
+}
+
+func errorHandler(c *gin.Context) {
+	c.String(429, "Too many requests")
+}
+
+func main() {
+	server := gin.Default()
+	// This makes it so each ip can only make 5 requests per second
+	store := GinRateLimit.InMemoryStore(time.Second, 5)
 	mw := GinRateLimit.RateLimiter(keyFunc, errorHandler, store)
 	server.GET("/", mw, func(c *gin.Context) {
 		c.String(200, "Hello World")
