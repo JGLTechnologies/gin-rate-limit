@@ -33,8 +33,8 @@ func keyFunc(c *gin.Context) string {
 	return c.ClientIP()
 }
 
-func errorHandler(c *gin.Context) {
-	c.String(429, "Too many requests")
+func errorHandler(c *gin.Context, remaining time.Duration) {
+	c.String(429, "Too many requests. Try again in "+remaining.String())
 }
 
 func main() {
@@ -71,8 +71,8 @@ func keyFunc(c *gin.Context) string {
 	return c.ClientIP()
 }
 
-func errorHandler(c *gin.Context) {
-	c.String(429, "Too many requests")
+func errorHandler(c *gin.Context, remaining time.Duration) {
+	c.String(429, "Too many requests. Try again in "+remaining.String())
 }
 
 func main() {
@@ -94,12 +94,15 @@ Custom Store Example
 ```go
 package main
 
+import "time"
+
 type CustomStore struct {
 }
 
 // Your store must have a method called Limit that takes a key and returns a bool
-func (s *CustomStore) Limit(key string) bool {
+func (s *CustomStore) Limit(key string) (bool, time.Duration) {
 	// Do your rate limit logic, and return true if the user went over the rate limit, otherwise return false
+	// Return the amount of time the client needs to wait to make a new request
 	if UserWentOverLimit {
 		return true
 	}

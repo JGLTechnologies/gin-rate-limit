@@ -31,7 +31,7 @@ type InMemoryStoreType struct {
 	mutex *sync.Mutex
 }
 
-func (s *InMemoryStoreType) Limit(key string) bool {
+func (s *InMemoryStoreType) Limit(key string) (bool, time.Duration) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	_, ok := s.data[key]
@@ -42,17 +42,18 @@ func (s *InMemoryStoreType) Limit(key string) bool {
 	if u.ts+s.rate <= time.Now().Unix() {
 		u.tokens = s.limit
 	}
+	remaining := time.Duration((s.rate - (time.Now().Unix() - u.ts)) * time.Second.Nanoseconds())
 	if u.tokens <= 0 {
-		return true
+		return true, remaining
 	}
 	u.tokens--
 	u.ts = time.Now().Unix()
 	s.data[key] = u
-	return false
+	return false, time.Duration(0)
 }
 
 type store interface {
-	Limit(key string) bool
+	Limit(key string) (bool, time.Duration)
 }
 
 func InMemoryStore(rate time.Duration, limit int) *InMemoryStoreType {
@@ -63,12 +64,12 @@ func InMemoryStore(rate time.Duration, limit int) *InMemoryStoreType {
 	return &store
 }
 
-func RateLimiter(keyFunc func(c *gin.Context) string, errorHandler func(c *gin.Context), s store) func(ctx *gin.Context) {
+func RateLimiter(keyFunc func(c *gin.Context) string, errorHandler func(c *gin.Context, remaining time.Duration), s store) func(ctx *gin.Context) {
 	return func(c *gin.Context) {
 		key := keyFunc(c)
-		limited := s.Limit(key)
+		limited, remaining := s.Limit(key)
 		if limited {
-			errorHandler(c)
+			errorHandler(c, remaining)
 			c.Abort()
 		} else {
 			c.Next()

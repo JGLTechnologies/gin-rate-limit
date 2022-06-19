@@ -2,6 +2,7 @@ package GinRateLimit
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-redis/redis/v8"
 	"time"
 )
@@ -13,7 +14,7 @@ type RedisStoreType struct {
 	ctx    context.Context
 }
 
-func (s *RedisStoreType) Limit(key string) bool {
+func (s *RedisStoreType) Limit(key string) (bool, time.Duration) {
 	p := s.client.Pipeline()
 	defer func(s *RedisStoreType, p redis.Pipeliner) {
 		p.Exec(s.ctx)
@@ -32,12 +33,14 @@ func (s *RedisStoreType) Limit(key string) bool {
 	if ts+s.rate <= time.Now().Unix() {
 		p.Set(s.ctx, key+"hits", 0, time.Duration(0))
 	}
+	remaining := time.Duration((s.rate - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())
 	if hits >= int64(s.limit) {
-		return true
+		return true, remaining
 	}
+	fmt.Println(hits)
 	p.Incr(s.ctx, key+"hits")
 	p.Set(s.ctx, key+"ts", time.Now().Unix(), time.Duration(0))
-	return false
+	return false, time.Duration(0)
 }
 
 func RedisStore(rate time.Duration, limit int, redisClient *redis.Client) *RedisStoreType {
