@@ -31,7 +31,8 @@ func (s *RedisStoreType) Limit(key string) (bool, time.Duration) {
 		hits = 0
 	}
 	if ts+s.rate <= time.Now().Unix() {
-		p.Set(s.ctx, key+"hits", 0, time.Duration(0))
+		hits = 0
+		p.Set(s.ctx, key+"hits", hits, time.Duration(0))
 	}
 	remaining := time.Duration((s.rate - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())
 	if hits >= int64(s.limit) {
