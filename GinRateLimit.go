@@ -30,12 +30,13 @@ type InMemoryStoreType struct {
 }
 
 func (s *InMemoryStoreType) Limit(key string) (bool, time.Duration) {
-	_, ok := s.data.Load(key)
+	var u user
+	m, ok := s.data.Load(key)
 	if !ok {
-		s.data.Store(key, user{time.Now().Unix(), s.limit})
+		u = user{time.Now().Unix(), s.limit}
+	} else {
+		u = m.(user)
 	}
-	m, _ := s.data.Load(key)
-	u := m.(user)
 	if u.ts+s.rate <= time.Now().Unix() {
 		u.tokens = s.limit
 	}
