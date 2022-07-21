@@ -1,4 +1,4 @@
-package GinRateLimit
+package ratelimit
 
 import (
 	"github.com/gin-gonic/gin"
