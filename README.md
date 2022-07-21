@@ -41,9 +41,7 @@ func main() {
 	server := gin.Default()
 	// This makes it so each ip can only make 5 requests per second
 	store := GinRateLimit.RedisStore(time.Second, 5, redis.NewClient(&redis.Options{
-		ReadTimeout:  time.Second,
-		WriteTimeout: time.Second,
-		IdleTimeout:  time.Second * 5,
+		Addr: "localhost:7680",
 	}), false)
 	mw := GinRateLimit.RateLimiter(keyFunc, errorHandler, store)
 	server.GET("/", mw, func(c *gin.Context) {
