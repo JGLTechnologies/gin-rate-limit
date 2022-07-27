@@ -8,12 +8,12 @@ import (
 
 type user struct {
 	ts     int64
-	tokens int
+	tokens uint
 }
 
 func clearInBackground(data *sync.Map, rate int64) {
 	for {
-		data.Range(func(k, v any) bool {
+		data.Range(func(k, v interface{}) bool {
 			if v.(user).ts+rate <= time.Now().Unix() {
 				data.Delete(k)
 			}
@@ -23,13 +23,14 @@ func clearInBackground(data *sync.Map, rate int64) {
 	}
 }
 
-type InMemoryStoreType struct {
+type inMemoryStoreType struct {
 	rate  int64
-	limit int
+	limit uint
 	data  *sync.Map
+	skip  func(c *gin.Context) bool
 }
 
-func (s *InMemoryStoreType) Limit(key string) (bool, time.Duration) {
+func (s *inMemoryStoreType) Limit(key string) (bool, time.Duration) {
 	var u user
 	m, ok := s.data.Load(key)
 	if !ok {
@@ -50,26 +51,23 @@ func (s *InMemoryStoreType) Limit(key string) (bool, time.Duration) {
 	return false, time.Duration(0)
 }
 
-type store interface {
-	Limit(key string) (bool, time.Duration)
+func (s *inMemoryStoreType) Skip(c *gin.Context) bool {
+	if s.skip != nil {
+		return s.skip(c)
+	} else {
+		return false
+	}
 }
 
-func InMemoryStore(rate time.Duration, limit int) *InMemoryStoreType {
+type InMemoryOptions struct {
+	Rate  time.Duration
+	Limit uint
+	Skip  func(c *gin.Context) bool
+}
+
+func InMemoryStore(options *InMemoryOptions) Store {
 	data := &sync.Map{}
-	store := InMemoryStoreType{int64(rate.Seconds()), limit, data}
+	store := inMemoryStoreType{int64(options.Rate.Seconds()), options.Limit, data, options.Skip}
 	go clearInBackground(data, store.rate)
 	return &store
-}
-
-func RateLimiter(keyFunc func(c *gin.Context) string, errorHandler func(c *gin.Context, remaining time.Duration), s store) func(ctx *gin.Context) {
-	return func(c *gin.Context) {
-		key := keyFunc(c)
-		limited, remaining := s.Limit(key)
-		if limited {
-			errorHandler(c, remaining)
-			c.Abort()
-		} else {
-			c.Next()
-		}
-	}
 }

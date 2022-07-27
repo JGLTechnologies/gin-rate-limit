@@ -2,19 +2,21 @@ package ratelimit
 
 import (
 	"context"
+	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"time"
 )
 
-type RedisStoreType struct {
+type redisStoreType struct {
 	rate       int64
-	limit      int
+	limit      uint
 	client     redis.UniversalClient
 	ctx        context.Context
 	panicOnErr bool
+	skip       func(c *gin.Context) bool
 }
 
-func (s *RedisStoreType) Limit(key string) (bool, time.Duration) {
+func (s *redisStoreType) Limit(key string) (bool, time.Duration) {
 	p := s.client.Pipeline()
 	defer p.Close()
 	cmds, _ := s.client.Pipelined(s.ctx, func(pipeliner redis.Pipeliner) error {
@@ -61,6 +63,29 @@ func (s *RedisStoreType) Limit(key string) (bool, time.Duration) {
 	return false, time.Duration(0)
 }
 
-func RedisStore(rate time.Duration, limit int, redisClient redis.UniversalClient, panicOnErr bool) *RedisStoreType {
-	return &RedisStoreType{client: redisClient, rate: int64(rate.Seconds()), limit: limit, ctx: context.TODO(), panicOnErr: panicOnErr}
+func (s *redisStoreType) Skip(c *gin.Context) bool {
+	if s.skip != nil {
+		return s.skip(c)
+	} else {
+		return false
+	}
+}
+
+type RedisOptions struct {
+	Rate        time.Duration
+	Limit       uint
+	RedisClient redis.UniversalClient
+	Skip        func(c *gin.Context) bool
+	PanicOnErr  bool
+}
+
+func RedisStore(options *RedisOptions) Store {
+	return &redisStoreType{
+		client:     options.RedisClient,
+		rate:       int64(options.Rate.Seconds()),
+		limit:      options.Limit,
+		ctx:        context.TODO(),
+		panicOnErr: options.PanicOnErr,
+		skip:       options.Skip,
+	}
 }

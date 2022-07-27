@@ -40,9 +40,13 @@ func errorHandler(c *gin.Context, remaining time.Duration) {
 func main() {
 	server := gin.Default()
 	// This makes it so each ip can only make 5 requests per second
-	store := ratelimit.RedisStore(time.Second, 5, redis.NewClient(&redis.Options{
-		Addr: "localhost:7680",
-	}), false)
+	store := ratelimit.RedisStore(&ratelimit.RedisOptions{
+		RedisClient: redis.NewClient(&redis.Options{
+			Addr: "localhost:7680",
+		}),
+		Rate: time.Second,
+		Limit: 5,
+    })
 	mw := ratelimit.RateLimiter(keyFunc, errorHandler, store)
 	server.GET("/", mw, func(c *gin.Context) {
 		c.String(200, "Hello World")
@@ -75,7 +79,10 @@ func errorHandler(c *gin.Context, remaining time.Duration) {
 func main() {
 	server := gin.Default()
 	// This makes it so each ip can only make 5 requests per second
-	store := ratelimit.InMemoryStore(time.Second, 5)
+	store := ratelimit.InMemoryStore(&ratelimit.InMemoryOptions{
+		Rate: time.Second,
+		Limit: 5,
+    })
 	mw := ratelimit.RateLimiter(keyFunc, errorHandler, store)
 	server.GET("/", mw, func(c *gin.Context) {
 		c.String(200, "Hello World")
@@ -91,18 +98,27 @@ Custom Store Example
 ```go
 package main
 
-import "time"
+import (
+	"github.com/gin-gonic/gin"
+	"time"
+)
 
 type CustomStore struct {
 }
 
-// Your store must have a method called Limit that takes a key and returns a bool
+// Your store must have a method called Limit that takes a key and returns a bool, time.Duration
 func (s *CustomStore) Limit(key string) (bool, time.Duration) {
 	// Do your rate limit logic, and return true if the user went over the rate limit, otherwise return false
 	// Return the amount of time the client needs to wait to make a new request
 	if UserWentOverLimit {
-		return true
+		return true, remaining
 	}
+	return false, remaining
+}
+
+// Your store must have a method called Skip that takes a *gin.Context and returns a bool
+func (s *CustomStore) Skip(c *gin.Context) bool {
+	// return true if you dont want this request to count toward the users rate limit
 	return false
 }
 ```
