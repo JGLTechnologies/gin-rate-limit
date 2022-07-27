@@ -60,9 +60,12 @@ func (s *inMemoryStoreType) Skip(c *gin.Context) bool {
 }
 
 type InMemoryOptions struct {
-	Rate  time.Duration
+	// the user can make Limit amount of requests every Rate
+	Rate time.Duration
+	// the amount of requests that can be made every Rate
 	Limit uint
-	Skip  func(c *gin.Context) bool
+	// takes in a *gin.Context and should return whether the rate limiting should be skipped for this request
+	Skip func(c *gin.Context) bool
 }
 
 func InMemoryStore(options *InMemoryOptions) Store {
