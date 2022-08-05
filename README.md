@@ -99,11 +99,6 @@ func main() {
 
 <br>
 
-# Custom Stores
-
-Unlike most rate limit libraries that support third party stores, gin-rate-limit only requires your store to have one
-method and lets you rate limit however you want. The default stores may not have exactly what you need, but it is easy
-to take one of the default stores and modify them. If you think your store could be useful to other people push it to GitHub.
 
 Custom Store Example
 
