@@ -1,28 +1,41 @@
 package ratelimit
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"time"
 )
 
+type Info struct {
+	RateLimited   bool
+	ResetTime     time.Time
+	RemainingHits uint
+}
+
 type Store interface {
-	// Limit takes in a key and should return whether that key is allowed to make another request
-	Limit(key string) (bool, time.Duration)
+	// Limit takes in a key and *gin.Context and should return whether that key is allowed to make another request
+	Limit(key string, c *gin.Context) Info
 }
 
 type Options struct {
-	ErrorHandler func(*gin.Context, time.Duration)
+	ErrorHandler func(*gin.Context, Info)
 	KeyFunc      func(*gin.Context) string
-	// a function that returns true if the request should not count toward the rate limit
-	Skip func(*gin.Context) bool
+	// a function that lets you check the rate limiting info and modify the response
+	BeforeResponse func(c *gin.Context, info Info)
 }
 
 // RateLimiter is a function to get gin.HandlerFunc
 func RateLimiter(s Store, options *Options) gin.HandlerFunc {
 	if options.ErrorHandler == nil {
-		options.ErrorHandler = func(c *gin.Context, remaining time.Duration) {
-			c.Header("X-Rate-Limit-Reset", remaining.String())
+		options.ErrorHandler = func(c *gin.Context, info Info) {
+			c.Header("X-Rate-Limit-Reset", fmt.Sprintf("%.2f", time.Until(info.ResetTime).Seconds()))
 			c.String(429, "Too many requests")
+		}
+	}
+	if options.BeforeResponse == nil {
+		options.BeforeResponse = func(c *gin.Context, info Info) {
+			c.Header("X-Rate-Limit-Remaining", fmt.Sprintf("%v", info.RemainingHits))
+			c.Header("X-Rate-Limit-Reset", fmt.Sprintf("%.2f", time.Until(info.ResetTime).Seconds()))
 		}
 	}
 	if options.KeyFunc == nil {
@@ -31,14 +44,14 @@ func RateLimiter(s Store, options *Options) gin.HandlerFunc {
 		}
 	}
 	return func(c *gin.Context) {
-		if options.Skip != nil && options.Skip(c) {
-			c.Next()
+		key := options.KeyFunc(c)
+		info := s.Limit(key, c)
+		options.BeforeResponse(c, info)
+		if c.IsAborted() {
 			return
 		}
-		key := options.KeyFunc(c)
-		limited, remaining := s.Limit(key)
-		if limited {
-			options.ErrorHandler(c, remaining)
+		if info.RateLimited {
+			options.ErrorHandler(c, info)
 			c.Abort()
 		} else {
 			c.Next()

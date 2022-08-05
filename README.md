@@ -33,8 +33,8 @@ func keyFunc(c *gin.Context) string {
 	return c.ClientIP()
 }
 
-func errorHandler(c *gin.Context, remaining time.Duration) {
-	c.String(429, "Too many requests. Try again in "+remaining.String())
+func errorHandler(c *gin.Context, info ratelimit.Info) {
+	c.String(429, "Too many requests. Try again in "+time.Until(info.ResetTime).String())
 }
 
 func main() {
@@ -75,8 +75,8 @@ func keyFunc(c *gin.Context) string {
 	return c.ClientIP()
 }
 
-func errorHandler(c *gin.Context, remaining time.Duration) {
-	c.String(429, "Too many requests. Try again in "+remaining.String())
+func errorHandler(c *gin.Context, info ratelimit.Info) {
+	c.String(429, "Too many requests. Try again in "+time.Until(info.ResetTime).String())
 }
 
 func main() {
@@ -106,20 +106,26 @@ Custom Store Example
 package main
 
 import (
+	"github.com/JGLTechnologies/gin-rate-limit"
 	"github.com/gin-gonic/gin"
-	"time"
 )
 
 type CustomStore struct {
 }
 
-// Your store must have a method called Limit that takes a key and returns a bool, time.Duration
-func (s *CustomStore) Limit(key string) (bool, time.Duration) {
-	// Do your rate limit logic, and return true if the user went over the rate limit, otherwise return false
-	// Return the amount of time the client needs to wait to make a new request
+// Your store must have a method called Limit that takes a key, *gin.Context and returns ratelimit.Info
+func (s *CustomStore) Limit(key string, c *gin.Context) Info {
 	if UserWentOverLimit {
-		return true, remaining
+		return Info{
+			RateLimited:   true,
+			ResetTime:     reset,
+			RemainingHits: 0,
+		}
 	}
-	return false, remaining
+	return Info{
+		RateLimited:   false,
+		ResetTime:     reset,
+		RemainingHits: remaining,
+	}
 }
 ```

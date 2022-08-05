@@ -16,7 +16,7 @@ type redisStoreType struct {
 	skip       func(c *gin.Context) bool
 }
 
-func (s *redisStoreType) Limit(key string) (bool, time.Duration) {
+func (s *redisStoreType) Limit(key string, c *gin.Context) Info {
 	p := s.client.Pipeline()
 	defer p.Close()
 	cmds, _ := s.client.Pipelined(s.ctx, func(pipeliner redis.Pipeliner) error {
@@ -36,18 +36,34 @@ func (s *redisStoreType) Limit(key string) (bool, time.Duration) {
 		hits = 0
 		p.Set(s.ctx, key+"hits", hits, time.Duration(0))
 	}
-	remaining := time.Duration((s.rate - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())
+	if s.skip != nil && s.skip(c) {
+		return Info{
+			RateLimited:   false,
+			ResetTime:     time.Now().Add(time.Duration((s.rate - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())),
+			RemainingHits: s.limit - uint(hits),
+		}
+	}
 	if hits >= int64(s.limit) {
 		_, err = p.Exec(s.ctx)
 		if err != nil {
 			if s.panicOnErr {
 				panic(err)
 			} else {
-				return false, time.Duration(0)
+				return Info{
+					RateLimited:   false,
+					ResetTime:     time.Now().Add(time.Duration((s.rate - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())),
+					RemainingHits: 0,
+				}
 			}
 		}
-		return true, remaining
+		return Info{
+			RateLimited:   true,
+			ResetTime:     time.Now().Add(time.Duration((s.rate - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())),
+			RemainingHits: 0,
+		}
 	}
+	ts = time.Now().Unix()
+	hits++
 	p.Incr(s.ctx, key+"hits")
 	p.Set(s.ctx, key+"ts", time.Now().Unix(), time.Duration(0))
 	p.Expire(s.ctx, key+"hits", time.Duration(int64(time.Second)*s.rate*2))
@@ -57,10 +73,18 @@ func (s *redisStoreType) Limit(key string) (bool, time.Duration) {
 		if s.panicOnErr {
 			panic(err)
 		} else {
-			return false, time.Duration(0)
+			return Info{
+				RateLimited:   false,
+				ResetTime:     time.Now().Add(time.Duration((s.rate - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())),
+				RemainingHits: s.limit - uint(hits),
+			}
 		}
 	}
-	return false, time.Duration(0)
+	return Info{
+		RateLimited:   false,
+		ResetTime:     time.Now().Add(time.Duration((s.rate - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())),
+		RemainingHits: s.limit - uint(hits),
+	}
 }
 
 type RedisOptions struct {
@@ -71,6 +95,8 @@ type RedisOptions struct {
 	RedisClient redis.UniversalClient
 	// should gin-rate-limit panic when there is an error with redis
 	PanicOnErr bool
+	// a function that returns true if the request should not count toward the rate limit
+	Skip func(*gin.Context) bool
 }
 
 func RedisStore(options *RedisOptions) Store {
@@ -80,5 +106,6 @@ func RedisStore(options *RedisOptions) Store {
 		limit:      options.Limit,
 		ctx:        context.TODO(),
 		panicOnErr: options.PanicOnErr,
+		skip:       options.Skip,
 	}
 }
