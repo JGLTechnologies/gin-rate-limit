@@ -1,7 +1,6 @@
 package ratelimit
 
 import (
-	"github.com/gin-gonic/gin"
 	"sync"
 	"time"
 )
@@ -27,7 +26,6 @@ type inMemoryStoreType struct {
 	rate  int64
 	limit uint
 	data  *sync.Map
-	skip  func(c *gin.Context) bool
 }
 
 func (s *inMemoryStoreType) Limit(key string) (bool, time.Duration) {
@@ -51,26 +49,16 @@ func (s *inMemoryStoreType) Limit(key string) (bool, time.Duration) {
 	return false, time.Duration(0)
 }
 
-func (s *inMemoryStoreType) Skip(c *gin.Context) bool {
-	if s.skip != nil {
-		return s.skip(c)
-	} else {
-		return false
-	}
-}
-
 type InMemoryOptions struct {
 	// the user can make Limit amount of requests every Rate
 	Rate time.Duration
 	// the amount of requests that can be made every Rate
 	Limit uint
-	// takes in a *gin.Context and should return whether the rate limiting should be skipped for this request
-	Skip func(c *gin.Context) bool
 }
 
 func InMemoryStore(options *InMemoryOptions) Store {
 	data := &sync.Map{}
-	store := inMemoryStoreType{int64(options.Rate.Seconds()), options.Limit, data, options.Skip}
+	store := inMemoryStoreType{int64(options.Rate.Seconds()), options.Limit, data}
 	go clearInBackground(data, store.rate)
 	return &store
 }

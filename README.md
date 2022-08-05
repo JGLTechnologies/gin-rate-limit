@@ -4,10 +4,10 @@
 
 # gin-rate-limit
 
-gin-rate-limit is a rate limiter for the <a href="https://github.com/gin-gonic/gin">gin framework</a>. By default, it can
-only store rate limit info in memory and with redis. If you want to store it somewhere else you can make your own store
-or use third party stores. The library is new so there are no third party stores yet, so I would appreciate if someone
-could make one.
+gin-rate-limit is a rate limiter for the <a href="https://github.com/gin-gonic/gin">gin framework</a>. By default, it
+can only store rate limit info in memory and with redis. If you want to store it somewhere else you can make your own
+store or use third party stores. The library is new so there are no third party stores yet, so I would appreciate if
+someone could make one.
 
 Install
 
@@ -44,10 +44,13 @@ func main() {
 		RedisClient: redis.NewClient(&redis.Options{
 			Addr: "localhost:7680",
 		}),
-		Rate: time.Second,
+		Rate:  time.Second,
 		Limit: 5,
+	})
+	mw := ratelimit.RateLimiter(store, &ratelimit.Options{
+		ErrorHanlder: errorHandler,
+		KeyFunc: keyfunc,
     })
-	mw := ratelimit.RateLimiter(keyFunc, errorHandler, store)
 	server.GET("/", mw, func(c *gin.Context) {
 		c.String(200, "Hello World")
 	})
@@ -80,10 +83,13 @@ func main() {
 	server := gin.Default()
 	// This makes it so each ip can only make 5 requests per second
 	store := ratelimit.InMemoryStore(&ratelimit.InMemoryOptions{
-		Rate: time.Second,
+		Rate:  time.Second,
 		Limit: 5,
-    })
-	mw := ratelimit.RateLimiter(keyFunc, errorHandler, store)
+	})
+	mw := ratelimit.RateLimiter(store, &ratelimit.Options{
+		ErrorHanlder: errorHandler,
+		KeyFunc: keyfunc,
+	})
 	server.GET("/", mw, func(c *gin.Context) {
 		c.String(200, "Hello World")
 	})
@@ -92,6 +98,12 @@ func main() {
 ```
 
 <br>
+
+# Custom Stores
+
+Unlike most rate limit libraries that support third party stores, gin-rate-limit only requires your store to have one
+method and lets you rate limit however you want. The default stores may not have exactly what you need, but it is easy
+to take one of the default stores and modify them. If you think your store could be useful to other people push it to GitHub.
 
 Custom Store Example
 
@@ -114,11 +126,5 @@ func (s *CustomStore) Limit(key string) (bool, time.Duration) {
 		return true, remaining
 	}
 	return false, remaining
-}
-
-// Your store must have a method called Skip that takes a *gin.Context and returns a bool
-func (s *CustomStore) Skip(c *gin.Context) bool {
-	// return true if you dont want this request to count toward the users rate limit
-	return false
 }
 ```

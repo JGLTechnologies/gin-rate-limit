@@ -63,21 +63,11 @@ func (s *redisStoreType) Limit(key string) (bool, time.Duration) {
 	return false, time.Duration(0)
 }
 
-func (s *redisStoreType) Skip(c *gin.Context) bool {
-	if s.skip != nil {
-		return s.skip(c)
-	} else {
-		return false
-	}
-}
-
 type RedisOptions struct {
 	// the user can make Limit amount of requests every Rate
 	Rate time.Duration
 	// the amount of requests that can be made every Rate
-	Limit uint
-	// takes in a *gin.Context and should return whether the rate limiting should be skipped for this request
-	Skip        func(c *gin.Context) bool
+	Limit       uint
 	RedisClient redis.UniversalClient
 	// should gin-rate-limit panic when there is an error with redis
 	PanicOnErr bool
@@ -90,6 +80,5 @@ func RedisStore(options *RedisOptions) Store {
 		limit:      options.Limit,
 		ctx:        context.TODO(),
 		panicOnErr: options.PanicOnErr,
-		skip:       options.Skip,
 	}
 }
