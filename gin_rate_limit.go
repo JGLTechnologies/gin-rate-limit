@@ -26,6 +26,9 @@ type Options struct {
 
 // RateLimiter is a function to get gin.HandlerFunc
 func RateLimiter(s Store, options *Options) gin.HandlerFunc {
+	if options == nil {
+		options = &Options{}
+	}
 	if options.ErrorHandler == nil {
 		options.ErrorHandler = func(c *gin.Context, info Info) {
 			c.Header("X-Rate-Limit-Reset", fmt.Sprintf("%.2f", time.Until(info.ResetTime).Seconds()))
