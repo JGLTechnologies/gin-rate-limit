@@ -48,8 +48,8 @@ func main() {
 		Limit: 5,
 	})
 	mw := ratelimit.RateLimiter(store, &ratelimit.Options{
-		ErrorHanlder: errorHandler,
-		KeyFunc: keyfunc,
+		ErrorHandler: errorHandler,
+		KeyFunc: keyFunc,
     })
 	server.GET("/", mw, func(c *gin.Context) {
 		c.String(200, "Hello World")
@@ -87,8 +87,8 @@ func main() {
 		Limit: 5,
 	})
 	mw := ratelimit.RateLimiter(store, &ratelimit.Options{
-		ErrorHanlder: errorHandler,
-		KeyFunc: keyfunc,
+		ErrorHandler: errorHandler,
+		KeyFunc: keyFunc,
 	})
 	server.GET("/", mw, func(c *gin.Context) {
 		c.String(200, "Hello World")
