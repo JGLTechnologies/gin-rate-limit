@@ -2,15 +2,16 @@ package ratelimit
 
 import (
 	"context"
-	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v8"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 )
 
 type redisStoreType struct {
 	rate       int64
 	limit      uint
-	client     redis.UniversalClient
+	client     *redis.Client
 	ctx        context.Context
 	panicOnErr bool
 	skip       func(c *gin.Context) bool
@@ -18,7 +19,6 @@ type redisStoreType struct {
 
 func (s *redisStoreType) Limit(key string, c *gin.Context) Info {
 	p := s.client.Pipeline()
-	defer p.Close()
 	cmds, _ := s.client.Pipelined(s.ctx, func(pipeliner redis.Pipeliner) error {
 		pipeliner.Get(s.ctx, key+"ts")
 		pipeliner.Get(s.ctx, key+"hits")
@@ -92,7 +92,7 @@ type RedisOptions struct {
 	Rate time.Duration
 	// the amount of requests that can be made every Rate
 	Limit       uint
-	RedisClient redis.UniversalClient
+	RedisClient *redis.Client
 	// should gin-rate-limit panic when there is an error with redis
 	PanicOnErr bool
 	// a function that returns true if the request should not count toward the rate limit

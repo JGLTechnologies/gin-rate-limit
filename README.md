@@ -25,7 +25,7 @@ package main
 import (
 	"github.com/JGLTechnologies/gin-rate-limit"
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"time"
 )
 
