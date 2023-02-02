@@ -1,4 +1,4 @@
-module github.com/JGLTechnologies/gin-rate-limit
+module github.com/yunus-cntech/gin-rate-limit
 
 go 1.17
 
