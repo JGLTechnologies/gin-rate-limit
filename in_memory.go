@@ -43,6 +43,7 @@ func (s *inMemoryStoreType) Limit(key string, c *gin.Context) Info {
 	}
 	if s.skip != nil && s.skip(c) {
 		return Info{
+			Limit:         s.limit,
 			RateLimited:   false,
 			ResetTime:     time.Now().Add(time.Duration((s.rate - (time.Now().Unix() - u.ts)) * time.Second.Nanoseconds())),
 			RemainingHits: u.tokens,
@@ -50,6 +51,7 @@ func (s *inMemoryStoreType) Limit(key string, c *gin.Context) Info {
 	}
 	if u.tokens <= 0 {
 		return Info{
+			Limit:         s.limit,
 			RateLimited:   true,
 			ResetTime:     time.Now().Add(time.Duration((s.rate - (time.Now().Unix() - u.ts)) * time.Second.Nanoseconds())),
 			RemainingHits: 0,
@@ -59,6 +61,7 @@ func (s *inMemoryStoreType) Limit(key string, c *gin.Context) Info {
 	u.ts = time.Now().Unix()
 	s.data.Store(key, u)
 	return Info{
+		Limit:         s.limit,
 		RateLimited:   false,
 		ResetTime:     time.Now().Add(time.Duration((s.rate - (time.Now().Unix() - u.ts)) * time.Second.Nanoseconds())),
 		RemainingHits: u.tokens,
