@@ -7,6 +7,7 @@ import (
 )
 
 type Info struct {
+	Limit         uint
 	RateLimited   bool
 	ResetTime     time.Time
 	RemainingHits uint
@@ -31,14 +32,16 @@ func RateLimiter(s Store, options *Options) gin.HandlerFunc {
 	}
 	if options.ErrorHandler == nil {
 		options.ErrorHandler = func(c *gin.Context, info Info) {
-			c.Header("X-Rate-Limit-Reset", fmt.Sprintf("%.2f", time.Until(info.ResetTime).Seconds()))
+			c.Header("X-Rate-Limit-Limit", fmt.Sprintf("%d", info.Limit))
+			c.Header("X-Rate-Limit-Reset", fmt.Sprintf("%d", info.ResetTime.Unix()))
 			c.String(429, "Too many requests")
 		}
 	}
 	if options.BeforeResponse == nil {
 		options.BeforeResponse = func(c *gin.Context, info Info) {
+			c.Header("X-Rate-Limit-Limit", fmt.Sprintf("%d", info.Limit))
 			c.Header("X-Rate-Limit-Remaining", fmt.Sprintf("%v", info.RemainingHits))
-			c.Header("X-Rate-Limit-Reset", fmt.Sprintf("%.2f", time.Until(info.ResetTime).Seconds()))
+			c.Header("X-Rate-Limit-Reset", fmt.Sprintf("%d", info.ResetTime.Unix()))
 		}
 	}
 	if options.KeyFunc == nil {
