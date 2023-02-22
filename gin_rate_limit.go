@@ -37,6 +37,7 @@ func RateLimiter(s Store, options *Options) gin.HandlerFunc {
 	}
 	if options.BeforeResponse == nil {
 		options.BeforeResponse = func(c *gin.Context, info Info) {
+			fmt.Println(info);
 			c.Header("X-Rate-Limit-Remaining", fmt.Sprintf("%v", info.RemainingHits))
 			c.Header("X-Rate-Limit-Reset", fmt.Sprintf("%d", info.ResetTime.Unix()))
 		}
