@@ -117,12 +117,14 @@ type CustomStore struct {
 func (s *CustomStore) Limit(key string, c *gin.Context) Info {
 	if UserWentOverLimit {
 		return Info{
+			Limit:         100,
 			RateLimited:   true,
 			ResetTime:     reset,
 			RemainingHits: 0,
 		}
 	}
 	return Info{
+		Limit:         100,
 		RateLimited:   false,
 		ResetTime:     reset,
 		RemainingHits: remaining,

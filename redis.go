@@ -38,6 +38,7 @@ func (s *redisStoreType) Limit(key string, c *gin.Context) Info {
 	}
 	if s.skip != nil && s.skip(c) {
 		return Info{
+			Limit:         s.limit,
 			RateLimited:   false,
 			ResetTime:     time.Now().Add(time.Duration((s.rate - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())),
 			RemainingHits: s.limit - uint(hits),
@@ -50,6 +51,7 @@ func (s *redisStoreType) Limit(key string, c *gin.Context) Info {
 				panic(err)
 			} else {
 				return Info{
+					Limit:         s.limit,
 					RateLimited:   false,
 					ResetTime:     time.Now().Add(time.Duration((s.rate - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())),
 					RemainingHits: 0,
@@ -57,6 +59,7 @@ func (s *redisStoreType) Limit(key string, c *gin.Context) Info {
 			}
 		}
 		return Info{
+			Limit:         s.limit,
 			RateLimited:   true,
 			ResetTime:     time.Now().Add(time.Duration((s.rate - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())),
 			RemainingHits: 0,
@@ -74,6 +77,7 @@ func (s *redisStoreType) Limit(key string, c *gin.Context) Info {
 			panic(err)
 		} else {
 			return Info{
+				Limit:         s.limit,
 				RateLimited:   false,
 				ResetTime:     time.Now().Add(time.Duration((s.rate - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())),
 				RemainingHits: s.limit - uint(hits),
@@ -81,6 +85,7 @@ func (s *redisStoreType) Limit(key string, c *gin.Context) Info {
 		}
 	}
 	return Info{
+		Limit:         s.limit,
 		RateLimited:   false,
 		ResetTime:     time.Now().Add(time.Duration((s.rate - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())),
 		RemainingHits: s.limit - uint(hits),
