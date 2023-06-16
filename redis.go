@@ -33,7 +33,7 @@ func (s *redisStoreType) Limit(key string, c *gin.Context) Info {
 	if err != nil {
 		hits = 0
 	}
-	if ts+s.rate <= time.Now().Unix() {
+	if ts+s.resetTime <= time.Now().Unix() {
 		hits = 0
 		p.Set(s.ctx, key+"hits", hits, time.Duration(0))
 	}

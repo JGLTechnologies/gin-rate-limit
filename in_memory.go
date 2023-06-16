@@ -12,10 +12,10 @@ type user struct {
 	tokens uint
 }
 
-func clearInBackground(data *sync.Map, rate int64) {
+func clearInBackground(data *sync.Map, resetTime int64) {
 	for {
 		data.Range(func(k, v interface{}) bool {
-			if v.(user).ts+rate <= time.Now().Unix() {
+			if v.(user).ts+resetTime <= time.Now().Unix() {
 				data.Delete(k)
 			}
 			return true
@@ -40,7 +40,7 @@ func (s *inMemoryStoreType) Limit(key string, c *gin.Context) Info {
 	} else {
 		u = m.(user)
 	}
-	if u.ts+s.rate <= time.Now().Unix() {
+	if u.ts+s.resetTime <= time.Now().Unix() {
 		u.tokens = s.limit
 	}
 	if s.skip != nil && s.skip(c) {
@@ -84,6 +84,6 @@ type InMemoryOptions struct {
 func InMemoryStore(options *InMemoryOptions) Store {
 	data := &sync.Map{}
 	store := inMemoryStoreType{int64(options.Rate.Seconds()), options.Limit, int64(options.ResetTime.Seconds()), data, options.Skip}
-	go clearInBackground(data, store.rate)
+	go clearInBackground(data, store.resetTime)
 	return &store
 }
