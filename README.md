@@ -39,13 +39,14 @@ func errorHandler(c *gin.Context, info ratelimit.Info) {
 
 func main() {
 	server := gin.Default()
-	// This makes it so each ip can only make 5 requests per second
+	// This makes it so each ip can only make 5 requests per second and will be banned for 3 seconds
 	store := ratelimit.RedisStore(&ratelimit.RedisOptions{
 		RedisClient: redis.NewClient(&redis.Options{
 			Addr: "localhost:7680",
 		}),
 		Rate:  time.Second,
 		Limit: 5,
+		ResetTime: 3 * time.Second,
 	})
 	mw := ratelimit.RateLimiter(store, &ratelimit.Options{
 		ErrorHandler: errorHandler,
@@ -81,10 +82,11 @@ func errorHandler(c *gin.Context, info ratelimit.Info) {
 
 func main() {
 	server := gin.Default()
-	// This makes it so each ip can only make 5 requests per second
+	// This makes it so each ip can only make 5 requests per second and will be banned for 3 seconds
 	store := ratelimit.InMemoryStore(&ratelimit.InMemoryOptions{
 		Rate:  time.Second,
 		Limit: 5,
+		ResetTime: 3 * time.Second,
 	})
 	mw := ratelimit.RateLimiter(store, &ratelimit.Options{
 		ErrorHandler: errorHandler,
