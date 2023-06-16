@@ -11,6 +11,7 @@ import (
 type redisStoreType struct {
 	rate       int64
 	limit      uint
+	resetTime  int64
 	client     *redis.Client
 	ctx        context.Context
 	panicOnErr bool
@@ -40,7 +41,7 @@ func (s *redisStoreType) Limit(key string, c *gin.Context) Info {
 		return Info{
 			Limit:         s.limit,
 			RateLimited:   false,
-			ResetTime:     time.Now().Add(time.Duration((s.rate - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())),
+			ResetTime:     time.Now().Add(time.Duration((s.resetTime - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())),
 			RemainingHits: s.limit - uint(hits),
 		}
 	}
@@ -53,7 +54,7 @@ func (s *redisStoreType) Limit(key string, c *gin.Context) Info {
 				return Info{
 					Limit:         s.limit,
 					RateLimited:   false,
-					ResetTime:     time.Now().Add(time.Duration((s.rate - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())),
+					ResetTime:     time.Now().Add(time.Duration((s.resetTime - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())),
 					RemainingHits: 0,
 				}
 			}
@@ -61,7 +62,7 @@ func (s *redisStoreType) Limit(key string, c *gin.Context) Info {
 		return Info{
 			Limit:         s.limit,
 			RateLimited:   true,
-			ResetTime:     time.Now().Add(time.Duration((s.rate - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())),
+			ResetTime:     time.Now().Add(time.Duration((s.resetTime - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())),
 			RemainingHits: 0,
 		}
 	}
@@ -79,7 +80,7 @@ func (s *redisStoreType) Limit(key string, c *gin.Context) Info {
 			return Info{
 				Limit:         s.limit,
 				RateLimited:   false,
-				ResetTime:     time.Now().Add(time.Duration((s.rate - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())),
+				ResetTime:     time.Now().Add(time.Duration((s.resetTime - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())),
 				RemainingHits: s.limit - uint(hits),
 			}
 		}
@@ -87,7 +88,7 @@ func (s *redisStoreType) Limit(key string, c *gin.Context) Info {
 	return Info{
 		Limit:         s.limit,
 		RateLimited:   false,
-		ResetTime:     time.Now().Add(time.Duration((s.rate - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())),
+		ResetTime:     time.Now().Add(time.Duration((s.resetTime - (time.Now().Unix() - ts)) * time.Second.Nanoseconds())),
 		RemainingHits: s.limit - uint(hits),
 	}
 }
@@ -96,7 +97,9 @@ type RedisOptions struct {
 	// the user can make Limit amount of requests every Rate
 	Rate time.Duration
 	// the amount of requests that can be made every Rate
-	Limit       uint
+	Limit uint
+	// the user will be unblocked after the ResetTime
+	ResetTime   time.Duration
 	RedisClient *redis.Client
 	// should gin-rate-limit panic when there is an error with redis
 	PanicOnErr bool
@@ -109,6 +112,7 @@ func RedisStore(options *RedisOptions) Store {
 		client:     options.RedisClient,
 		rate:       int64(options.Rate.Seconds()),
 		limit:      options.Limit,
+		resetTime:  int64(options.ResetTime.Seconds()),
 		ctx:        context.TODO(),
 		panicOnErr: options.PanicOnErr,
 		skip:       options.Skip,

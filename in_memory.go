@@ -1,9 +1,10 @@
 package ratelimit
 
 import (
-	"github.com/gin-gonic/gin"
 	"sync"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 type user struct {
@@ -24,10 +25,11 @@ func clearInBackground(data *sync.Map, rate int64) {
 }
 
 type inMemoryStoreType struct {
-	rate  int64
-	limit uint
-	data  *sync.Map
-	skip  func(ctx *gin.Context) bool
+	rate      int64
+	limit     uint
+	resetTime int64
+	data      *sync.Map
+	skip      func(ctx *gin.Context) bool
 }
 
 func (s *inMemoryStoreType) Limit(key string, c *gin.Context) Info {
@@ -45,7 +47,7 @@ func (s *inMemoryStoreType) Limit(key string, c *gin.Context) Info {
 		return Info{
 			Limit:         s.limit,
 			RateLimited:   false,
-			ResetTime:     time.Now().Add(time.Duration((s.rate - (time.Now().Unix() - u.ts)) * time.Second.Nanoseconds())),
+			ResetTime:     time.Now().Add(time.Duration((s.resetTime - (time.Now().Unix() - u.ts)) * time.Second.Nanoseconds())),
 			RemainingHits: u.tokens,
 		}
 	}
@@ -53,7 +55,7 @@ func (s *inMemoryStoreType) Limit(key string, c *gin.Context) Info {
 		return Info{
 			Limit:         s.limit,
 			RateLimited:   true,
-			ResetTime:     time.Now().Add(time.Duration((s.rate - (time.Now().Unix() - u.ts)) * time.Second.Nanoseconds())),
+			ResetTime:     time.Now().Add(time.Duration((s.resetTime - (time.Now().Unix() - u.ts)) * time.Second.Nanoseconds())),
 			RemainingHits: 0,
 		}
 	}
@@ -63,7 +65,7 @@ func (s *inMemoryStoreType) Limit(key string, c *gin.Context) Info {
 	return Info{
 		Limit:         s.limit,
 		RateLimited:   false,
-		ResetTime:     time.Now().Add(time.Duration((s.rate - (time.Now().Unix() - u.ts)) * time.Second.Nanoseconds())),
+		ResetTime:     time.Now().Add(time.Duration((s.resetTime - (time.Now().Unix() - u.ts)) * time.Second.Nanoseconds())),
 		RemainingHits: u.tokens,
 	}
 }
@@ -73,13 +75,15 @@ type InMemoryOptions struct {
 	Rate time.Duration
 	// the amount of requests that can be made every Rate
 	Limit uint
+	// the user will be unblocked after the ResetTime
+	ResetTime time.Duration
 	// a function that returns true if the request should not count toward the rate limit
 	Skip func(*gin.Context) bool
 }
 
 func InMemoryStore(options *InMemoryOptions) Store {
 	data := &sync.Map{}
-	store := inMemoryStoreType{int64(options.Rate.Seconds()), options.Limit, data, options.Skip}
+	store := inMemoryStoreType{int64(options.Rate.Seconds()), options.Limit, int64(options.ResetTime.Seconds()), data, options.Skip}
 	go clearInBackground(data, store.rate)
 	return &store
 }
