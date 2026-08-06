@@ -28,9 +28,19 @@ type inMemoryStoreType struct {
 	limit uint
 	data  *sync.Map
 	skip  func(ctx *gin.Context) bool
+	mu    sync.Mutex
 }
 
 func (s *inMemoryStoreType) Limit(key string, c *gin.Context) Info {
+	// Loading the user, decrementing its tokens, and storing it back must be
+	// atomic. sync.Map makes each Load/Store atomic on its own, but not the
+	// read-modify-write across them, so without this lock two concurrent
+	// requests for the same key both read the same token count, both decrement
+	// their local copy, and both store it, losing one decrement and admitting
+	// over the limit.
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	var u user
 	m, ok := s.data.Load(key)
 	if !ok {
@@ -79,7 +89,12 @@ type InMemoryOptions struct {
 
 func InMemoryStore(options *InMemoryOptions) Store {
 	data := &sync.Map{}
-	store := inMemoryStoreType{int64(options.Rate.Seconds()), options.Limit, data, options.Skip}
+	store := inMemoryStoreType{
+		rate:  int64(options.Rate.Seconds()),
+		limit: options.Limit,
+		data:  data,
+		skip:  options.Skip,
+	}
 	go clearInBackground(data, store.rate)
 	return &store
 }
